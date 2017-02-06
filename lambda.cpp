@@ -2,6 +2,7 @@
 #include <vector>
 #include <algorithm>
 #include <complex>
+#include <functional>
 
 int main() {
 
@@ -26,5 +27,15 @@ int main() {
   std::cout<< square(3.14)<<std::endl;
   std::cout<< square(std::complex<double>(3,-2))<<std::endl;
   */
+  auto testLambda = [](int n){
+    if(n % 2 == 0) {
+      return 0;
+    } else {
+      return n * 2;
+    }
+  };
+  int a = testLambda(2);
+  int b = testLambda(3);
+  std::cout<<a<<" "<<b<<std::endl;
 
 }
