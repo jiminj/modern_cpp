@@ -209,22 +209,143 @@ Obj someFunc(Obj && o) {
 }
 ```
 
-**더 읽을거리: Universal reference, `std::forward`**
+**더 읽을거리: Universal reference, `std::forward`, Rule of five**
+
+## Smart Pointers
+편리한 자원관리를 위해 도입되었다. 자원을 객체에 넣고 자원 관리(해제)를 객체에게 위임하는 것이 스마트 포인터의 기본적인 개념이다. 
+
+### std::auto_ptr (C++98/deprecated)
+가장 기본적인 스마트 포인터이자 C++11 이전까지는 유일하게 지원되는 스마트 포인터였다. 객체가 소멸될 때 (destructor가 호출될 때) 자원이 해제된다. 즉, 자원에 대한 Ownership을 가진다. (Resource Acquisition is Initilization; **RAII Principle**)
+
+
+일반적인 자원 할당/소멸의 과정은 다음과 같다. 
+```cpp
+class Widget(){ ... };
+void f() {
+  Widget * w = new Widget(); 
+  ...
+  delete w;
+}
+```
+그러나 위 예시는 실행 도중 (`...` 부분) early return, exception 등의 원인으로 자원의 해제(`delete`)가 실행되지 않을 가능성을 가지고 있다. 스마트 포인터를 사용하면 이러한 위험을 피할 수 있다. 
+```cpp
+class Widget(){ ... };
+void f() {
+  std::auto_ptr<Widget> w(new Widget()); 
+  ...
+  //stack이 소멸되며 w의 소멸자가 호출되고, 할당한 자원 (new Widget())이 해제된다.
+}
+```
+
+
+그러나 `auto_ptr`은 아래와 같은 이유 때문에 deprecated 되었다.
+- `auto_ptr`은 자신이 소멸될 때 자원이 해제되므로, 복사가 가능해서는 안된다. (자원에 대한 해제가 여러번 일어날 수 있다.) 즉, 언제나 unique해야 한다. **이러한 강력한 ownership을 유지하기 위하여 복사가 이루어지면 원본의 객체를 `nullptr`로 만들어버린다.**
+```cpp
+  std::auto_ptr<Widget> pw1(new Widget());
+  std::auto_ptr<Widget> pw2(pw1); //pw1은 nullptr이 된다.
+  pw1->someFunc(); //segfault
+```
+
+- 위와 같이 copy semantics가 다른 STL containers와는 다르기 때문에 다른 STL containers (`std::vector`, `std::map`..)의 원소로 사용될 수 없다.
+- 자원의 해제에 `delete[]`가 아닌 `delete`를 이용하므로 배열(plain array)을 자원으로 가질 수 없다.
+
+### std::shared_ptr
+가장 보편적으로 사용되는 smart pointer이다. reference counting을 이용해 수명 주기를 관리한다. 참조하고 있는 외부 객체의 수(참조 횟수)가 0이 되면 자동으로 해제된다. `auto_ptr`과 마찬가지의 이유로 배열을 담을 수 없다.
+
+```cpp
+std::shared_ptr<Widget> spw1(new Widget); 
+//std::make_shared를 이용하면 코드도 간결해지며 성능상의 이점도 있다.
+auto spw2(std::make_shared<Widget>()); 
+```
+```cpp
+class Integer {
+  int n;
+  public:
+    Integer(int n): n{n} { std::cout<< "ctor called -- " << n << std::endl; }
+    ~Integer() { std::cout << "dtor called -- " << n << std::endl; }
+    int get() const { return n; }
+};
+
+int main() {
+  std::shared_ptr<Integer> a{new Integer{10}};
+  std::shared_ptr<Integer> b{a};
+  std::cout<< a->get() <<std::endl;
+  std::cout<< b->get() <<std::endl;
+}
+//출력:
+//ctor called -- 10
+//10
+//10
+//dtor called -- 10
+```
+
+### std::weak_ptr
+Reference counting 방식의 smart pointer의 문제점은 바로 cyclic reference가 발생할 가능성이 있다는 것이다. 
+
+```cpp
+struct Widget { std::shared_ptr<Widget> ptr; };
+int main()
+{
+  auto x = std::make_shared<Widget>();
+  auto y = std::make_shared<Widget>();
+
+  x->ptr = y; 
+  y->ptr = x; // x keeps y alive and y keeps x alive
+}
+```
+
+`std::weak_ptr`은 `std::shared_ptr` 또는 같은 `std::weak_ptr`로부터만 생성이 가능하며, `std::shared_ptr`의 reference count를 증가시키지 않음으로써 잠재적인 위험에서 벗어날 수 있다. 객체의 수명주기에 영향을 미치지 않으면서 값을 참조하고 싶을 때 사용될 수 있다.
+
+```cpp
+struct Widget { std::weak_ptr<Widget> ptr; };
+int main()
+{
+  auto x = std::make_shared<Widget>();
+  auto y = std::make_shared<Widget>();
+
+  x->ptr = y; 
+  y->ptr = x; 
+}
+```
+`std::shared_ptr` 과는 달리 내부 자원에 바로 접근할 수 없다. 대신  `std::shared_ptr`를 반환하는 `std::weak_ptr::lock()`함수를 제공한다. 
+
+```cpp
+  auto shared = std::make_shared<int>(42);
+  std::weak_ptr<int> weak = shared;
+  std::cout << *weak << std::endl; //error; *weak으로 접근할 수 없다. 
+  auto sw = weak.lock();
+  std::cout << *sw << std::endl; //output: 42
+```
+
+### std::unique_ptr (boost::scoped_ptr)
+
+`std::auto_ptr`의 대체재로 도입되었다. 복사를 통한 생성(copy constructor)은 지원하지 않으며, 대신 `std::move`를 이용하여 ownership trasfer를 통한 생성(move constructor / move assignment operator)을 허용한다. 
+
+```cpp
+std::unique_ptr<int> p1(new int(5));
+//shared_ptr과 마찬가지로 make_unique를 통한 생성을 허용한다. (C++14)
+auto pAuto = std::make_unique<int>(5);
+
+std::unique_ptr<int> p2 = p1; //error!!
+std::unique_ptr<int> p3 = std::move(p1); //okay.  p1은 소멸된다.
+```
+
+다른 containers에도 `std::move`를 이용해 담을 수 있다.
+```cpp
+auto ptr = std::make_unique<int>(5);
+std::vector<std::unique_ptr<int>> vec;
+vec.push_back(ptr); //error
+vec.push_back(std::move(ptr)); //okay
+```
+
+또한, 내부적으로 자원 해제시에 `delete[]`를 이용하므로 배열을 다룰 수 있다는 차이도 존재한다.
+
 
 ## Compile-time Validation
 
 ## Concurrency
-
-## Smart Pointers
-### std::auto_ptr (C++98/deprecated)
-<!--scope가 종료될 때 해제된다. 대입연산과 관련해 소유권 이전 -->
-
-### std::shared_ptr
-가장 널리 사용되는 smart pointer이다. reference counting을 이용해 수명 주기를 관리한다. 참조하고 있는 scope를 이용해 참조 횟수를 관리하며, 값이 0이 되면 자동으로 해제된다. 
-### std::weak_ptr
-`std::shared_ptr` 또는 같은 `std::weak_ptr`로부터만 생성이 가능하다. `std::shared_ptr`의 reference count를 증가시키지 않음으로써, 잠재적인 circular reference의 위험에서 벗어날 수 있다. 객체의 수명주기에 영향을 미치지 않으면서 값을 참조하고 싶을 때 쓰일 수 있다.
-### std::unique_ptr (boost::scoped_ptr)
-`std::auto_ptr`의 대체재로 도입되었다. `std::move`를 이용한다.
+### std::async
+### std::lock_guard
 
 ## STL Containers
 
