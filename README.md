@@ -1,7 +1,7 @@
 # Modern C++; Changes and New Features Basics
-This article is written as a quick reference material for the internal company seminar, aiming to introduce very basic concepts of C++11/14 in approx ~1h of time to people familiar with C++. Many parts of detailed internal mechanisms or advanced usages are omitted intentionally.
+This article is a material to introduce very basic concepts of C++11/14 targetting a small group seminar consists of people who are already familiar with C++. Many parts of detailed internal mechanisms or advanced usages are omitted intentionally.
 
-The most of content and sample codes were written with references to various online materials of www.cplusplus.com, www.cppreference.com, [MSDN](https://msdn.microsoft.com/), [StackOverflow](http://stackoverflow.com/) and the book ['Effective Modern C++'](http://shop.oreilly.com/product/0636920033707.do), by Scott Meyers
+The most of content and sample codes were written with references to various online material such as www.cplusplus.com, www.cppreference.com, [MSDN](https://msdn.microsoft.com/), [StackOverflow](http://stackoverflow.com/) and the book ['Effective Modern C++'](http://shop.oreilly.com/product/0636920033707.do), by Scott Meyers
 
 ## Type Deduction
 ### `auto`
