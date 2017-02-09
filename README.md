@@ -514,6 +514,14 @@ void work(int n) {
 비동기 task/job을 수행한다. 
 
 ### Parallel Versions of STL Algorithms (C++17)
+stl containers와 관련된 알고리즘에 대한 병렬 연산 지원 문법이 추가된다. (아직 구체적인 문법이 확정되지는 않았다.)
+
+```cpp
+std::vector<int> v;
+
+std::sort(par, v.begin(), v.end()); //parallel
+std::sort(seq, v.begin(), v.end()); //sequential
+```
 
 ## Other Features
 ### User Defined Literals 
@@ -643,4 +651,11 @@ int main() {
   std::string location = location_lookup.get("waldo").value_or("unknown");
 }
 ```
+
+## Beyond C++17
+C++17 표준에는 포함되지 않았지만 중요하게 논의되었으며, 다음 표준에 포함될 것이 유력한 기능들은 다음과 같다.
+- Concepts
+- Modules
+- Coroutines
+
 
