@@ -13,7 +13,7 @@ auto sum = a + b; //deducted to int
 
 ```cpp
 vector<int> container{1,2,3,4,5}; //Uniform initialization
-...
+/*...*/
 vector<int>::size_type sz = container.size();
 auto sz2 = container.size(); //동일한 결과
 
@@ -33,7 +33,7 @@ for(const auto &i : container) { .. }
 ```cpp
 auto a; //error
 ```
-C++11까지는 auto를 return type에는 사용할 수 없다.  C++14에서는가능하다.  
+C++11까지는 auto를 return type에는 사용할 수 없다.  C++14에서는가능하다. (내부적으로 template을 사용한다)
 ```cpp
 template<class T, class U>
 auto add14(T t, U u) { //C++14
@@ -42,7 +42,7 @@ auto add14(T t, U u) { //C++14
 ```
 
 ### decltype
-주어진 변수, 표현식 등에서 type을 유추한다.
+주어진 변수, 표현식 등에서 type을 유추한다. 이 때의 타입은 코드에서 정의된 그대로, 즉 컴파일러가 알고 있는 타입이다.
 ```cpp
 //basic example
 double a;
@@ -144,7 +144,7 @@ const std::string &v = std::string("world"); //okay
 //function parameter의 예
 void printStringRef(std::string &str);
 void printStringConstRef(const std::string &str);
-...
+/*...*/
 printStringRef("hello"); //error
 printStringConstRef("world"); //okay
 ```
@@ -152,14 +152,14 @@ printStringConstRef("world"); //okay
 C++11에서 도입된 rvalue reference (&&)를 이용하면 rvalue에 대한 reference를 만들 수 있다. 
 ```cpp
 std::string getName();
-...
+/*...*/
 std::string && ref = getName();
 std::string && ref2 = std::string("hello!");
 
 //function parameter의 예. 
 void printString(std::string && str); //rvalue parameter
 void printString(const std::string &str); //lvalue parameter
-...
+/*...*/
 printString("hello"); //rvalue version이 호출
 printString(str); //lvalue version이 호출
 ```
@@ -220,7 +220,7 @@ Obj someFunc(Obj && o) {
 
 일반적인 자원 할당/소멸의 과정은 다음과 같다. 
 ```cpp
-class Widget(){ ... };
+class Widget(){ /*...*/ };
 void f() {
   Widget * w = new Widget(); 
   ...
@@ -229,7 +229,7 @@ void f() {
 ```
 그러나 위 예시는 실행 도중 (`...` 부분) early return, exception 등의 원인으로 자원의 해제(`delete`)가 실행되지 않을 가능성을 가지고 있다. 스마트 포인터를 사용하면 이러한 위험을 피할 수 있다. 
 ```cpp
-class Widget(){ ... };
+class Widget(){ /*...*/ };
 void f() {
   std::auto_ptr<Widget> w(new Widget()); 
   ...
@@ -340,13 +340,129 @@ vec.push_back(std::move(ptr)); //okay
 
 또한, 내부적으로 자원 해제시에 `delete[]`를 이용하므로 배열을 다룰 수 있다는 차이도 존재한다.
 
+## Compile Time Expresssions
 
-## Compile-time Validation
+### Type Traits
+trait은 일반적으로 어떤 타입이 가지고 있는 '특성정보' 를 의미한다. 컴파일 타임에 타입 정보를 확인할 수 있고, 타입 정보를 이용하여 분기를 만들 수 있다. 다른 언어들에서 사용되는 정의와는 정의가 조금 다르다는 것에 유의한다. (e.g., Scala trait, default methods of Java 8) 
+
+```cpp
+std::cout << std::boolalpha;
+std::cout << std::is_function<int>::value << std::endl; //false
+std::cout << std::is_function<int(int)>::value << std::endl; //true
+
+struct A {};
+class B : A {};
+struct C {};
+
+std::cout << std::is_class<C>::value << std::endl; //true
+std::cout << std::is_base_of<A, B>::value << std::endl; //true
+std::cout << std::is_base_of<A, C>::value << std::endl; //false
+```
+그 외에 `std::is_array`, `std::is_pointer`, `std::is_fundamental`, `std::is_void`, `std::is_const`.. 등 다양한 traits들을 제공한다. 
+
+
+### Static Assertion
+컴파일 타임에 주어진 조건을 검사할 수 있다. `static_assert`문을 통한 검사를 통과하지 못하면 컴파일이 실패하게 된다. (runtime 검사를 수행하는 기존 `assert`와는 다르다)
+
+```cpp
+template <class T>
+void swap(T &a, T &b) {
+  static_assert(std::is_copy_constructible<T>::value, "Swap requires copying");
+  auto c = b; b = a; a = c;
+}
+```
+
+### Variadic Template (C++11)
+```cpp
+template<typename T>
+T adder(T v) { return v; }
+
+template<typename T, typename... Args>
+T adder(T first, Args... args) { return first + adder(args...); }
+
+int main() {
+  long sum = adder(1, 2, 3, 8, 7);
+
+  std::string s1 = "x", s2 = "aa", s3 = "bb", s4 = "yy";
+  std::string ssum = adder(s1, s2, s3, s4);
+
+  float t1 = 1.5;
+  int t2 = 1;
+  std::complex<double> sum_difftype = adder(t1, t2);
+
+  std::cout<<sum<< " "<< ssum<<" " << sum_difftype<<std::endl;
+  //output
+  //21 xaabbyy (2.5,0)
+}
+```
+
+### Variable Template (C++14)
+```cpp
+template<typename T> constexpr T PI = T(3.1415926535897932385);
+template<typename T> T area (T r) { return PI<T> * r * r; }
+
+int main() {
+  std::cout << PI<int> << " " << area(2) << std::endl;
+  std::cout<< PI<double> << " "<<  area(2.0) << std::endl;
+  //output
+  //3 12
+  //3.14159 12.5664
+}
+```
+
+### constexpr
+Generalized constant expression; 특정한 expressions을 컴파일 타임에 평가할 수 있도록 한다.
+
+```cpp
+constexpr int multiply(int x, int y) { return x * y; }
+const int val = multiply(10, 10); //컴파일 타임에 계산된다.
+int my_array[ multiply(2, 10) ];
+```
+
+과거 template meta programming과 유사한 측면이 있으나, 조금 더 포괄적으로 사용할 수 있다.
+
+```cpp
+constexpr int factorial(int n) {
+  return n > 0 ? n * factorial(n-1) : 1; 
+}
+
+std::cout<<factorial(5); //120
+```
+
+```cpp
+//참고: TMP로 구현한 Factorial
+
+template <int N> struct FactorialTM { enum { value = FactorialTM<N-1>::value * N }; };
+template <> struct FactorialTM<0> { enum { value = 1 }; };
+
+std::cout << FactorialTM<5>::value; //120
+```
+
+runtime에 실행하는 것도 가능하다.
+
+```cpp
+int n;
+cin >> n;
+factorial(n);
+```
+
+변수에도 사용할 수 있다. `const`와 유사한 역할을 한다. 
+```cpp
+constexpr auto size = 10;
+```
+`#define`과 같은 매크로를 대체할 수 있다는 점에서 동작 방식은 다르지만 어느정도 `inline`의 역할을 대체한다고도 할 수 있다.
+
+### Template auto (C++17)
+```cpp
+template<auto n> struct AutoTemp { }
+template <auto ... v> struct MixedTypeList {};
+using myList = MixedTypeList<10, 'x', 1.3f>;
+AutoTemp<5> a;
+AutoTemp<'b'> b;
+```
 
 ## Concurrency
 ### std::async
 ### std::lock_guard
-
-## STL Containers
 
 
