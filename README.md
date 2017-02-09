@@ -74,7 +74,7 @@ auto add(T t, U u) -> decltype(t + u) { //trailing return type
 - () : parameters
 - {} : body
 
-return type은 생략될 때가 많다. (이 때, return type은 auto deduction rule을 따른다.)
+return type은 생략될 때가 많다. (이 때, return type은 auto deduction rule을 따른다.) parameters 역시 생략 가능하다.
 
 ```cpp
   int one = 1;
@@ -452,7 +452,7 @@ constexpr auto size = 10;
 `#define`과 같은 매크로를 대체할 수 있다는 점에서 동작 방식은 다르지만 어느정도 `inline` specifier의 역할을 대체한다고도 할 수 있다.
 
 ### Compile Time Static If (C++17) (`if constexpr`)
-컴파일 시간에 결정되는 value의 경우 이에 `if` statement 역시 컴파일 시간에 평가될 수 있다.
+컴파일 시간에 결정되는 value에 대한 `if` statement 역시 컴파일 시간에 평가될 수 있다.
 
 ```cpp
 template<typename T>
@@ -480,7 +480,7 @@ std::tuple t(4, 3, 2.5);
 
 ## Concurrency
 ### `std::thread` and `std::mutx`
-언어 차원에서 thread와 mutex를 지원하게 되었다. 사용방법은 pthread와 크게 다르지 않다.
+언어 차원에서 동시성 관련 기능을 지원하게 됨으로써 여러 플랫폼에서 표준적인 행동을 보이는 멀티 스레드 프로그램을 작성할 수 있게 되었다. STL에서 제공하는 thread와 mutex의 사용방법은 pthread와 크게 다르지 않다.
 
 ```cpp
 std::mutex mut;
@@ -493,13 +493,13 @@ void work(int n) {
 
 int main(){
   std::thread t1(work, 0);
-  std::thread t2(work, 1);
+  std::thread t2([]{ /* lambda thread */ }, 1);
   t1.join();
   t2.join();
 }
 ```
 
-또한, `std::mutex`를 위해 `std::lock_guard` 및 `std::unique_lock` 등의 wrapper를 제공한다. 이는 mutex의 RAII버전이라고 볼 수 있다. (`std::unique_lock`은 객체 생성과 lock을 분리할 수 있다.)
+`std::mutex`를 위한 `std::lock_guard` 및 `std::unique_lock` 등의 wrapper를 제공되는데, 이는 mutex의 RAII버전이라고 볼 수 있다. 명시적인 unlock 작업 없이도 해제를 보장한다. (`std::unique_lock`은 객체 생성과 lock을 분리할 수 있다는 차이가 있다.)
 
 ```cpp
 std::mutex mut;
@@ -511,10 +511,82 @@ void work(int n) {
 ```
 
 ### `std::async`
-비동기 task/job을 수행한다. 
+비동기 task/job을 수행한다. 동시성이 필요한 작업을 수행할 때, 많은 경우 직접 thread를 생성하는 것 보다는 task기반으로 작업하는 것이 높은 추상성을 유지할 수 있으며, 성능면에서도 유리한 점이 많다. (scheduling, load balancing 등의 복잡한 문제를 직접 처리하지 않아도 된다.)
+
+```cpp
+auto func = [] { std::cout << "hello world" << std::endl; };
+auto handle = std::async(std::launch::async, func);
+```
+`std::async`가 결과로 반환하는 것은 `std::future` 객체이다. 이를 통해 task의 결과를 원래의 데이터와 동기화 할 수 있다. 이 때, **결과값을 변수에 저장하지 않는다면** `std::async`가 비동기적으로 수행된다는 보장을 할 수 없음을 유의한다. (`std::future`의 destructor가 작업을 block하게 된다) 
+
+```cpp
+std::future<std::string> fut = std::async(std::launch::async, [](){ return "The async task is completed"; });
+/* .. */
+fut.wait(); //block
+std::cout<< "result : " << fut.get();
+```
+
+정확히 말해 `std::async`는 단순히 주어진 작업을 비동기적으로 수행행한다는 의미 보다는 주어진 정책에 따라 작업을 처리하는 역할을 한다고 보는것이 옳다. `std::async`는 두 개의 인자를 받는데, 첫번 째 인자를 통해 두 번째 인자로 주어진 작업을 바로 (다른 thread를 통해) 비동기 수행할 것인지(`std::launch::async`) 아니면 값이 요구될 때 lazy evaluation할 것인지(`std::launch::deferred`)를 선택할 수 있다. lazy evaluation을 정책으로 결정한 경우, 주어진 작업은 결과로 받은 `std::future`가 데이터가 필요한 시점이 될 때(`get()` 또는 `wait()`이 호출되는 시점) 현재 thread에서 수행된다.
+
+```cpp
+void print_ten (char c, int ms) {
+  for (int i=0; i<10; ++i) {
+    std::this_thread::sleep_for (std::chrono::milliseconds(ms));
+    std::cout << c;
+  }
+}
+
+int main ()
+{
+  std::cout << "with launch::async:\n";
+  std::future<void> foo = std::async (std::launch::async,print_ten,'*',100);
+  std::future<void> bar = std::async (std::launch::async,print_ten,'@',200);
+  // async "get" (wait for foo and bar to be ready):
+  foo.get();
+  bar.get();
+  std::cout << std::endl;
+
+  //possible output:
+  //  with launch::async:
+  //  **@**@**@*@**@*@@@@@
+
+  std::cout << "with launch::deferred:\n";
+  foo = std::async (std::launch::deferred,print_ten,'*',100);
+  bar = std::async (std::launch::deferred,print_ten,'@',200);
+  // deferred "get" (perform the actual calls):
+  foo.get();
+  bar.get();
+  std::cout << std::endl;
+
+  //expected output:
+  //  with launch::deferred:
+  //  **********@@@@@@@@@@
+} 
+```
+
+아래는 `std::async`를 이용해 비동기적으로 `std::vector`들의 합을 구하는 예이다.
+```cpp
+template <typename T>
+int parallel_sum(T beg, T end)
+{
+  auto len = end - beg;
+  if(len < 1000)
+    return std::accumulate(beg, end, 0);
+
+  T mid = beg + len/2;
+  auto handle = std::async(std::launch::async, parallel_sum<T>, mid, end);
+  int sum = parallel_sum(beg, mid);
+  return sum + handle.get();
+}
+int main() {
+  std::vector<int> v(10000, 1);
+  std::cout << "The sum is " << parallel_sum(v.begin(), v.end()) << '\n';
+}
+```
+*더 읽을 거리: `std::shared_future`, `std::promise`*
 
 ### Parallel Versions of STL Algorithms (C++17)
-stl containers와 관련된 알고리즘에 대한 병렬 연산 지원 문법이 추가된다. (아직 구체적인 문법이 확정되지는 않았다.)
+stl containers와 관련된 알고리즘에 대한 병렬 연산 지원 문법이 추가된다. (아직 구체적인 spec이 확정되지는 않았다.)
 
 ```cpp
 std::vector<int> v;
