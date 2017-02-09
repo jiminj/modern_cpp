@@ -1,8 +1,10 @@
 # Modern C++; Changes and New Features Basics
-This article is written as a quick reference material for the internal company seminar, aiming to introduce very basic concepts of C++11/14 in approx ~1h of time. Many parts of detailed internal mechanisms or advanced usages are omitted intentionally.
+This article is written as a quick reference material for the internal company seminar, aiming to introduce very basic concepts of C++11/14 in approx ~1h of time to people familiar with C++. Many parts of detailed internal mechanisms or advanced usages are omitted intentionally.
+
+The most of content and sample codes were written with references to various online materials of www.cplusplus.com, www.cppreference.com, [MSDN](https://msdn.microsoft.com/), [StackOverflow](http://stackoverflow.com/) and the book ['Effective Modern C++'](http://shop.oreilly.com/product/0636920033707.do), by Scott Meyers
 
 ## Type Deduction
-### auto
+### `auto`
 기본적으로 template type deduction과 유사한 법칙에 기반해 동작한다. (자세한 사항은 생략) 
 
 ```cpp
@@ -25,8 +27,8 @@ for(auto i : container) {
 
 이런 식으로 타입을 좀 더 구체적으로 지정해 줄 수도 있다.
 ```cpp
-for(const auto i : container) { .. }
-for(const auto &i : container) { .. }
+for(const auto i : container) { /*...*/ } //const int
+for(const auto &i : container) { /*...*/ } //const int&
 ```
 
 항상 초기 값이 필요하다.
@@ -41,7 +43,7 @@ auto add14(T t, U u) { //C++14
 }
 ```
 
-### decltype
+### `decltype`
 주어진 변수, 표현식 등에서 type을 유추한다. 이 때의 타입은 코드에서 정의된 그대로, 즉 컴파일러가 알고 있는 타입이다.
 ```cpp
 //basic example
@@ -130,10 +132,9 @@ C++14부터 지원한다. parameters를 auto로 받을 수 있다.
 
 ```cpp
 std::string getName();
-int main() {
-  int x = 3;  //int x는 lvalue
-  getName()   //getName()은 rvalue
-}
+
+int x = 3;  //int x는 lvalue
+getName()   //getName()은 rvalue
 ```
 
 C++11 이전까지는 rvalue에 대한 reference는 const로만 지정할 수 있었다.
@@ -198,7 +199,7 @@ int main() {
 }
 ```
 
-### std::move
+### `std::move`
 `std::move`는 기본적으로 parameter로 주어진 lvalue expression을 rvalue reference로 `static_cast` 하는 역할을 한다. (xvalue expression) 이를 이용해 명시적으로 move constructor를 호출할 수 있다. 
 
 ```cpp
@@ -214,7 +215,7 @@ Obj someFunc(Obj && o) {
 ## Smart Pointers
 편리한 자원관리를 위해 도입되었다. 자원을 객체에 넣고 자원 관리(해제)를 객체에게 위임하는 것이 스마트 포인터의 기본적인 개념이다. 
 
-### std::auto_ptr (C++98/deprecated)
+### `std::auto_ptr (C++98/deprecated)`
 가장 기본적인 스마트 포인터이자 C++11 이전까지는 유일하게 지원되는 스마트 포인터였다. 객체가 소멸될 때 (destructor가 호출될 때) 자원이 해제된다. 즉, 자원에 대한 Ownership을 가진다. (Resource Acquisition is Initilization; **RAII Principle**)
 
 
@@ -249,7 +250,7 @@ void f() {
 - 위와 같이 copy semantics가 다른 STL containers와는 다르기 때문에 다른 STL containers (`std::vector`, `std::map`..)의 원소로 사용될 수 없다.
 - 자원의 해제에 `delete[]`가 아닌 `delete`를 이용하므로 배열(plain array)을 자원으로 가질 수 없다.
 
-### std::shared_ptr
+### `std::shared_ptr`
 가장 보편적으로 사용되는 smart pointer이다. reference counting을 이용해 수명 주기를 관리한다. 참조하고 있는 외부 객체의 수(참조 횟수)가 0이 되면 자동으로 해제된다. `auto_ptr`과 마찬가지의 이유로 배열을 담을 수 없다.
 
 ```cpp
@@ -279,7 +280,7 @@ int main() {
 //dtor called -- 10
 ```
 
-### std::weak_ptr
+### `std::weak_ptr`
 Reference counting 방식의 smart pointer의 문제점은 바로 cyclic reference가 발생할 가능성이 있다는 것이다. 
 
 ```cpp
@@ -317,7 +318,7 @@ int main()
   std::cout << *sw << std::endl; //output: 42
 ```
 
-### std::unique_ptr (boost::scoped_ptr)
+### `std::unique_ptr (boost::scoped_ptr)`
 
 `std::auto_ptr`의 대체재로 도입되었다. 복사를 통한 생성(copy constructor)은 지원하지 않으며, 대신 `std::move`를 이용하여 ownership trasfer를 통한 생성(move constructor / move assignment operator)을 허용한다. 
 
@@ -343,7 +344,7 @@ vec.push_back(std::move(ptr)); //okay
 ## Compile Time Expresssions
 
 ### Type Traits
-trait은 일반적으로 어떤 타입이 가지고 있는 '특성정보' 를 의미한다. 컴파일 타임에 타입 정보를 확인할 수 있고, 타입 정보를 이용하여 분기를 만들 수 있다. 다른 언어들에서 사용되는 정의와는 정의가 조금 다르다는 것에 유의한다. (e.g., Scala trait, default methods of Java 8) 
+trait은 일반적으로 어떤 타입이 가지고 있는 '특성정보' 를 의미한다. 컴파일 시간에 타입 정보를 확인할 수 있고, 타입 정보를 이용하여 분기를 만들 수 있다. 다른 언어들에서 사용되는 정의와는 정의가 조금 다르다는 것에 유의한다. (e.g., Scala trait, default methods of Java 8) 
 
 ```cpp
 std::cout << std::boolalpha;
@@ -362,7 +363,7 @@ std::cout << std::is_base_of<A, C>::value << std::endl; //false
 
 
 ### Static Assertion
-컴파일 타임에 주어진 조건을 검사할 수 있다. `static_assert`문을 통한 검사를 통과하지 못하면 컴파일이 실패하게 된다. (runtime 검사를 수행하는 기존 `assert`와는 다르다)
+컴파일 시간에 주어진 조건을 검사할 수 있다. `static_assert`문을 통한 검사를 통과하지 못하면 컴파일이 실패하게 된다. (runtime 검사를 수행하는 기존 `assert`와는 다르다)
 
 ```cpp
 template <class T>
@@ -411,11 +412,11 @@ int main() {
 ```
 
 ### constexpr
-Generalized constant expression; 특정한 expressions을 컴파일 타임에 평가할 수 있도록 한다.
+Generalized constant expression; 특정한 expressions을 컴파일 시간에 평가할 수 있도록 한다.
 
 ```cpp
 constexpr int multiply(int x, int y) { return x * y; }
-const int val = multiply(10, 10); //컴파일 타임에 계산된다.
+const int val = multiply(10, 10); //컴파일 시간에 계산된다.
 int my_array[ multiply(2, 10) ];
 ```
 
@@ -428,7 +429,6 @@ constexpr int factorial(int n) {
 
 std::cout<<factorial(5); //120
 ```
-
 ```cpp
 //참고: TMP로 구현한 Factorial
 
@@ -437,8 +437,7 @@ template <> struct FactorialTM<0> { enum { value = 1 }; };
 
 std::cout << FactorialTM<5>::value; //120
 ```
-
-runtime에 실행하는 것도 가능하다.
+다만 컴파일 시간 연산이 언제나 guarantee되는 것은 아니고, 문맥에 따라 runtime에도 연산을 수행할 수 있다.
 
 ```cpp
 int n;
@@ -446,23 +445,202 @@ cin >> n;
 factorial(n);
 ```
 
-변수에도 사용할 수 있다. `const`와 유사한 역할을 한다. 
+변수에도 사용할 수 있다. 의미에 있어 몇 가지 차이가 있지만 기본적으로 `const`와 유사한 역할을 한다. 
 ```cpp
 constexpr auto size = 10;
 ```
-`#define`과 같은 매크로를 대체할 수 있다는 점에서 동작 방식은 다르지만 어느정도 `inline`의 역할을 대체한다고도 할 수 있다.
+`#define`과 같은 매크로를 대체할 수 있다는 점에서 동작 방식은 다르지만 어느정도 `inline` specifier의 역할을 대체한다고도 할 수 있다.
 
-### Template auto (C++17)
+### Compile Time Static If (C++17) (`if constexpr`)
+컴파일 시간에 결정되는 value의 경우 이에 `if` statement 역시 컴파일 시간에 평가될 수 있다.
+
 ```cpp
-template<auto n> struct AutoTemp { }
+template<typename T>
+auto get_value(T t) {
+  if constexpr (std::is_pointer_v<T>) { return *t; } //if constexpr (condition)
+  else { return t; }
+}
+```
+
+### Template `auto` (C++17)
+```cpp
+template <auto n> struct AutoTemp { }
 template <auto ... v> struct MixedTypeList {};
 using myList = MixedTypeList<10, 'x', 1.3f>;
 AutoTemp<5> a;
 AutoTemp<'b'> b;
 ```
 
-## Concurrency
-### std::async
-### std::lock_guard
+### Template Type Deduction (C++17)
+Template type argument에 대한 추론이 가능하다.
+```cpp
+std::pair p(2, 4.5);
+std::tuple t(4, 3, 2.5);
+```
 
+## Concurrency
+### `std::thread` and `std::mutx`
+언어 차원에서 thread와 mutex를 지원하게 되었다. 사용방법은 pthread와 크게 다르지 않다.
+
+```cpp
+std::mutex mut;
+void work(int n) { 
+  mut.lock();
+  /* ... */ 
+  mut.unlock();
+  std::this_thread::sleep_for(std::chrono::seconds(1));
+}
+
+int main(){
+  std::thread t1(work, 0);
+  std::thread t2(work, 1);
+  t1.join();
+  t2.join();
+}
+```
+
+또한, `std::mutex`를 위해 `std::lock_guard` 및 `std::unique_lock` 등의 wrapper를 제공한다. 이는 mutex의 RAII버전이라고 볼 수 있다. (`std::unique_lock`은 객체 생성과 lock을 분리할 수 있다.)
+
+```cpp
+std::mutex mut;
+void work(int n) { 
+  std::lock_guard<std::mutex> lock(mut);
+  /* ... */
+  //unlock 필요 없음
+}
+```
+
+### `std::async`
+비동기 task/job을 수행한다. 
+
+### Parallel Versions of STL Algorithms (C++17)
+
+## Other Features
+### User Defined Literals 
+사용자가 직접 리터럴 형식을 정의할 수 있다.
+```cpp
+constexpr long double operator"" _deg (long double deg) {
+  return deg * 3.141592 / 180;
+}
+int main() {
+  double x= 90.0_deg;
+  std::cout << std::fixed << x <<std::endl; // output: 1.570796
+}
+```
+C++14에서는 standard literal 정의가 추가되었다.
+
+```cpp
+auto str = "hello world"s;  //auto deduces std::string
+auto dur = 60s;             //auto deduces std::chrono::seconds;
+auto z = 1i                 // auto deduces std::complex<double>
+
+int n = 0b011110            // binary literal
+```
+
+### Digit Separators (C++14)
+큰 숫자의 경우 자리수를 쉽게 인지할 수 있도록 seperator를 추가할 수 있다.
+```cpp
+auto million = 1'000'000;
+auto this_also_works = 1'0'0'000'00;
+```
+
+### Nested Namespaces (C++17)
+```cpp
+namespace A::B::C { /* ... */ } 
+//equivalent to namespace A { namespace B { namespace C { ... } } }
+```
+
+### Initializers in `if` and `switch` Statements (C++17)
+```cpp
+std::map<std::string, int> map;
+map["hello"] = 1;
+
+//참고: map::insert의 반환형은 std::pair<std::map<T1, T2>::iterator>, bool > 이다. 
+//삽입하려는 원소가 이미 존재하는 경우에는 기존 원소의 iterator와 false를 함께 반환한다.
+
+if(auto ret = map.insert({"hello", 3}); !ret.second) {
+  std::cout<<"hello already exists with value : "<< ret.first->second <<std::endl;
+}
+```
+
+```cpp
+//std::unique_lock의 예 
+std::mutex mtx;
+if(std::unique_lock<std::mutex> l(mtx, std::try_to_lock); l.owns_lock()) {
+  std::cout<<"Successfully locked the resource";
+  /* ...*/
+} else { }
+```
+
+`switch` statemet에서도 사용할 수 있다.
+
+```cpp
+enum Result { SUCCESS, ABORTED, /*...*/ };
+std::pair<size_t, Result> writePacket() { /*... */ }
+
+switch (auto result = writePacket(); result.second) {
+  case SUCCESS: /*... */
+  case ABORTED: /*... */
+}
+```
+
+### `std::tuple` and Structured Binding
+A fixed-size collection of heterogeneous values. (`std::pair`의 좀 더 일반화된 버전으로 볼 수 있다.) 
+
+```cpp
+std::tuple<double, char, std::string> get_student(int id)
+{
+  if (id == 0) return std::make_tuple(3.8, 'A', "Lisa Simpson");
+  if (id == 1) return std::make_tuple(2.9, 'C', "Milhouse Van Houten");
+  /*...*/
+}
+
+int main()
+{
+  auto student0 = get_student(0);
+  std::cout << "ID: 0, "
+            << "GPA: " << std::get<0>(student0) << ", " //get으로 받는 방법
+            << "grade: " << std::get<1>(student0) << ", "
+            << "name: " << std::get<2>(student0) << std::endl;
+
+  double gpa1; char grade1; std::string name1;
+  std::tie(gpa1, grade1, name1) = get_student(1);  //std::tie로 받는 방법
+  std::cout << "ID: 1, "
+            << "GPA: " << gpa1 << ", "
+            << "grade: " << grade1 << ", "
+            << "name: " << name1 << std::endl;
+}
+```
+
+C++17에서는 'structured binding'이라 불리는 문법을 지원한다.
+```cpp
+auto [gpa1, grade1, name1] = get_student(1);
+// 아래와 동일하다.
+// double gpa1; char grade1; std::string name1;
+// std::tie(gpa1, grade1, name1) = get_student(1);  
+```
+
+### Additional Mathmatical Functions (C++17)
+`std::beta`, `std::legendre`, `std::laguerre`, `std::riemann_zeta` 등의 mathmatical special functions들이 추가되었다.
+
+```cpp 
+double binom (int n, int k) { 
+  return 1 / ((n+1) * std::beta(n-k+1, k+1)); 
+}
+```
+
+### `std::optional` (C++17)
+Null object pattern을 대체하는 클래스 템플릿. 값이 없는 (null) 상태를 방지할 수 있다.
+
+```cpp 
+template<typename Key, typename Value>
+class Lookup { 
+  std::optional<Value> get(Key key); 
+  /*...*/ 
+};
+int main() {
+  Lookup<std::string, std::string> location_lookup;
+  std::string location = location_lookup.get("waldo").value_or("unknown");
+}
+```
 
