@@ -128,7 +128,7 @@ C++14부터 지원한다. parameters를 auto로 받을 수 있다.
 ## Move Semantics
 
 ### Rvalue reference
-**lvalue expressions** and **rvalue expressions**: *An **lvalue** refers to an object that persists beyond a single expression. You can think of **an lvalue as an object that has a name**. All variables, including nonmodifiable ( const ) variables, are lvalues. An **rvalue** is **a temporary value that does not persist beyond the expression** that uses it.* (ref: MSDN)
+**lvalue expressions** and **rvalue expressions**: *An lvalue refers to an object that persists beyond a single expression. You can think of **an lvalue as an object that has a name**. All variables, including nonmodifiable ( const ) variables, are lvalues. An **rvalue** is **a temporary value that does not persist beyond the expression** that uses it.* (ref: MSDN)
 
 ```cpp
 std::string getName();
@@ -190,7 +190,7 @@ struct Obj
   Obj(Obj&& o) noexcept : s{std::move(o.s)} { std::cout << "move ctor!"<<std::endl; }
 };
 
-Obj f(Obj o) { return o; } //produce rvalue
+Obj f(Obj o) { return o; } //produce a rvalue
 
 int main() {
   Obj o;
@@ -204,8 +204,8 @@ int main() {
 
 ```cpp
 Obj someFunc(Obj && o) {
-  Obj temp1{o}; //move ctor!
-  Obj temp2{std::move(o)}; //casting to rvalue(xvalue) - move ctor!
+  Obj temp1{o}; //copy ctor!
+  Obj temp2{std::move(o)}; //casting to a rvalue(xvalue) - move ctor!
   return temp2;
 }
 ```
@@ -328,7 +328,7 @@ std::unique_ptr<int> p1(new int(5));
 auto pAuto = std::make_unique<int>(5);
 
 std::unique_ptr<int> p2 = p1; //error!!
-std::unique_ptr<int> p3 = std::move(p1); //okay.  p1은 소멸된다.
+std::unique_ptr<int> p3 = std::move(p1); //okay.  p1의 상태는 보장되지 않는다.
 ```
 
 다른 containers에도 `std::move`를 이용해 담을 수 있다.
@@ -479,7 +479,7 @@ std::tuple t(4, 3, 2.5);
 ```
 
 ## Concurrency
-### `std::thread` and `std::mutx`
+### `std::thread` and `std::mutex`
 언어 차원에서 동시성 관련 기능을 지원하게 됨으로써 여러 플랫폼에서 표준적인 행동을 보이는 멀티 스레드 프로그램을 작성할 수 있게 되었다. STL에서 제공하는 thread와 mutex의 사용방법은 pthread와 크게 다르지 않다.
 
 ```cpp
@@ -564,7 +564,7 @@ int main ()
 } 
 ```
 
-아래는 `std::async`를 이용해 비동기적으로 `std::vector`들의 합을 구하는 예이다.
+아래는 `std::async`를 이용해 비동기적으로 `std::vector`가 가진 원소의 합을 구하는 예이다.
 ```cpp
 template <typename T>
 int parallel_sum(T beg, T end)
@@ -698,6 +698,37 @@ auto [gpa1, grade1, name1] = get_student(1);
 // 아래와 동일하다.
 // double gpa1; char grade1; std::string name1;
 // std::tie(gpa1, grade1, name1) = get_student(1);  
+```
+
+### Pseudo Random Number Generators (PRNG)
+random, 또는 pseudo random 넘버를 생성하는 라이브러리가 추가되었다. 난수 생성을 위한 두가지의 요소가 제공된다.
+  - Random number Engines
+    - `std::mersenne_twister_engine`, `std::linear_congruental_engine` 등의 알고리즘을 지원한다. 널리 사용되는 난수 생성 알고리즘을 위해 predefined keyword를 제공한다. (`std::default_random_engine`, `std::mt19937`, `std::minstd_rand` 등)
+    - `std::random_device` : non-deterministic random number generator. hardware entropy source를 이용한다. entropy pool이 소모되면 생성된 난수의 품질이 떨어지므로 PRNG의 seed로 사용하는 것이 일반적이다.
+  - Random Number Distributions: 생성된 난수에 대한 post-processing을 통하여 특정한 분포를 따르게 한다.
+    - `std::uniform_int_distribution`, `std::geometric_distribution`, `std::exponential_distribution`, `std::normal_distribution` 등
+  - 기타 제공 함수들
+    - `std::seed_seq`: 특정한 정수형 데이터의 sequence를 소비하여 이용하여 unsigned seed sequence를 생성한다.
+
+```cpp
+  // Seed with a real random value, if available
+  std::random_device r;
+
+  // Choose a random mean between 1 and 6
+  std::default_random_engine e1(r()); // std::random_device를 시드로 이용해 난수를 생성한다.
+  std::uniform_int_distribution<int> uniform_dist(1, 6);
+  int mean = uniform_dist(e1);
+  std::cout << "Randomly-chosen mean: " << mean << '\n';
+
+  // Generate a normal distribution around that mean
+  std::seed_seq seed2{r(), r(), r(), r(), r(), r(), r(), r()};
+  std::mt19937 e2(seed2); //32-bit Mersenne Twister
+  std::normal_distribution<> normal_dist(mean, 2);
+  std::map<int, int> hist;
+
+  for (int n = 0; n < 10000; ++n) {
+    std::cout<<normal_dist(e2);  // normal distribution을 따르는 메르센 난수를 출력한다.
+  }
 ```
 
 ### Additional Mathmatical Functions (C++17)
