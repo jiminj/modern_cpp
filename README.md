@@ -1,7 +1,7 @@
 # Modern C++; Changes and New Features Basics
-This article is a material to introduce very basic concepts of C++11/14 targetting a small group seminar consists of people who are already familiar with C++. Many parts of detailed internal mechanisms or advanced usages are omitted intentionally.
+This article aims to introduce very basic concepts of C++11/14 to people who are already familiar with C++. Many parts of detailed internal mechanisms or advanced usages are omitted intentionally. You may find more information on the Internet.
 
-The most of content and sample codes were written with references to various online material such as www.cplusplus.com, www.cppreference.com, [MSDN](https://msdn.microsoft.com/), [StackOverflow](http://stackoverflow.com/) and the book ['Effective Modern C++'](http://shop.oreilly.com/product/0636920033707.do), by Scott Meyers
+The most of content and sample codes referred to various online material such as www.cplusplus.com, www.cppreference.com, [MSDN](https://msdn.microsoft.com/), [StackOverflow](http://stackoverflow.com/) and the book ['Effective Modern C++'](http://shop.oreilly.com/product/0636920033707.do), by Scott Meyers
 
 ## Type Deduction
 ### `auto`
@@ -117,7 +117,7 @@ C++14부터는 capture 할 변수의 이름을 지정할 수 있다. (Initializa
 ```
 
 ### Generic Lambda
-C++14부터 지원한다. parameters를 auto로 받을 수 있다.
+C++14부터 지원한다. parameters를 auto로 지정할 수 있다.
 ```cpp
   auto square = [](auto n) { return n * n; }; //C++14
   std::cout << square(2) << std::endl; //4
@@ -128,7 +128,7 @@ C++14부터 지원한다. parameters를 auto로 받을 수 있다.
 ## Move Semantics
 
 ### Rvalue reference
-**lvalue expressions** and **rvalue expressions**: *An lvalue refers to an object that persists beyond a single expression. You can think of **an lvalue as an object that has a name**. All variables, including nonmodifiable ( const ) variables, are lvalues. An **rvalue** is **a temporary value that does not persist beyond the expression** that uses it.* (ref: MSDN)
+**lvalue expressions** and **rvalue expressions**: _**An lvalue** refers to an object that persists beyond a single expression. You can think of **an lvalue as an object that has a name**. All variables, including nonmodifiable (`const`) variables, are lvalues. An **rvalue** is **a temporary value that does not persist beyond the expression** that uses it._ (ref: MSDN)
 
 ```cpp
 std::string getName();
@@ -161,11 +161,11 @@ std::string && ref2 = std::string("hello!");
 void printString(std::string && str); //rvalue parameter
 void printString(const std::string &str); //lvalue parameter
 /*...*/
-printString("hello"); //rvalue version이 호출
-printString(str); //lvalue version이 호출
+printString("hello"); //rvalue version(std::string &&)이 호출
+printString(str); //lvalue version(const std::string &)이 호출
 ```
 
-rvalue reference를 반환하는 함수와 같은 expressions을 *expiring value;xvalue* 라고 부른다. 이는 lvalue의 일종으로 취급되며 (generalized lvalue) 주소를 참조할 수 있다.
+rvalue reference를 반환하는 함수와 같은 expressions을 *expiring value;xvalue* 라고 부른다. xvalue는 lvalue의 일종으로 취급되며 (generalized lvalue) 주소를 참조할 수 있다.
 
 ```cpp
 int && xvalue(); 
@@ -238,8 +238,8 @@ void f() {
 }
 ```
 
-
 그러나 `auto_ptr`은 아래와 같은 이유 때문에 deprecated 되었다.
+
 - `auto_ptr`은 자신이 소멸될 때 자원이 해제되므로, 복사가 가능해서는 안된다. (자원에 대한 해제가 여러번 일어날 수 있다.) 즉, 언제나 unique해야 한다. **이러한 강력한 ownership을 유지하기 위하여 복사가 이루어지면 원본의 객체를 `nullptr`로 만들어버린다.**
 ```cpp
   std::auto_ptr<Widget> pw1(new Widget());
@@ -517,7 +517,7 @@ void work(int n) {
 auto func = [] { std::cout << "hello world" << std::endl; };
 auto handle = std::async(std::launch::async, func);
 ```
-`std::async`가 결과로 반환하는 것은 `std::future` 객체이다. 이를 통해 task의 결과를 원래의 데이터와 동기화 할 수 있다. 이 때, **결과값을 변수에 저장하지 않는다면** `std::async`가 비동기적으로 수행된다는 보장을 할 수 없음을 유의한다. (`std::future`의 destructor가 작업을 block하게 된다) 
+`std::async`가 결과로 반환하는 것은 `std::future` 객체이다. 이를 통해 task의 결과를 원래의 데이터와 동기화 할 수 있다. 이 때, **결과값을 변수에 저장하지 않는다면** `std::async`가 비동기적으로 수행된다는 보장을 할 수 없음을 유의한다. (바로 `std::future`의 destructor가 호출되며 작업을 block하게 된다) 
 
 ```cpp
 std::future<std::string> fut = std::async(std::launch::async, [](){ return "The async task is completed"; });
@@ -526,7 +526,7 @@ fut.wait(); //block
 std::cout<< "result : " << fut.get();
 ```
 
-정확히 말해 `std::async`는 단순히 주어진 작업을 비동기적으로 수행행한다는 의미 보다는 주어진 정책에 따라 작업을 처리하는 역할을 한다고 보는것이 옳다. `std::async`는 두 개의 인자를 받는데, 첫번 째 인자를 통해 두 번째 인자로 주어진 작업을 바로 (다른 thread를 통해) 비동기 수행할 것인지(`std::launch::async`) 아니면 값이 요구될 때 lazy evaluation할 것인지(`std::launch::deferred`)를 선택할 수 있다. lazy evaluation을 정책으로 결정한 경우, 주어진 작업은 결과로 받은 `std::future`가 데이터가 필요한 시점이 될 때(`get()` 또는 `wait()`이 호출되는 시점) 현재 thread에서 수행된다.
+정확히 말해 `std::async`는 단순히 주어진 작업을 비동기적으로 수행행한다는 의미 보다는 주어진 정책에 따라 작업을 처리하는 역할을 가진다고 여기는 것이 옳다. `std::async`는 두 개의 인자를 받는데, 첫번 째 인자를 통해 두 번째 인자로 주어진 작업을 바로 (다른 thread를 통해) 비동기 수행할 것인지(`std::launch::async`) 아니면 값이 요구될 때 lazy evaluation할 것인지(`std::launch::deferred`)를 선택할 수 있다. lazy evaluation을 정책으로 결정한 경우, 주어진 작업은 결과로 받은 `std::future`가 데이터가 필요한 시점이 될 때(`get()` 또는 `wait()`이 호출되는 시점) 현재 thread에서 수행된다.
 
 ```cpp
 void print_ten (char c, int ms) {
@@ -701,14 +701,14 @@ auto [gpa1, grade1, name1] = get_student(1);
 ```
 
 ### Pseudo Random Number Generators (PRNG)
-random, 또는 pseudo random 넘버를 생성하는 라이브러리가 추가되었다. 난수 생성을 위한 두가지의 요소가 제공된다.
+난수의 품질이 보장되지 않았던 기존의 `std::rand`외에 보다 품질이 높은 pseudo random numbers를 생성하는 라이브러리가 추가되었다. 난수 생성을 위한 두가지의 요소가 제공된다.
   - Random number Engines
-    - `std::mersenne_twister_engine`, `std::linear_congruental_engine` 등의 알고리즘을 지원한다. 널리 사용되는 난수 생성 알고리즘을 위해 predefined keyword를 제공한다. (`std::default_random_engine`, `std::mt19937`, `std::minstd_rand` 등)
-    - `std::random_device` : non-deterministic random number generator. hardware entropy source를 이용한다. entropy pool이 소모되면 생성된 난수의 품질이 떨어지므로 PRNG의 seed로 사용하는 것이 일반적이다.
+    - `std::mersenne_twister_engine`, `std::linear_congruental_engine` 등의 알고리즘을 이용한 난수 생성을 지원한다. 널리 사용되는 난수 생성 알고리즘을 위한 predefined keyword를 제공한다. (`std::default_random_engine`, `std::mt19937`, `std::minstd_rand` 등)
+    - `std::random_device` : non-deterministic random number generator. hardware entropy source를 이용한다. 하드웨어의 지원 여부에 따라 지원하지 못하는 경우가 있으며 entropy pool이 소모되면 생성된 난수의 품질이 떨어지므로 PRNG engine의 seed로 사용하는 것이 일반적이다.
   - Random Number Distributions: 생성된 난수에 대한 post-processing을 통하여 특정한 분포를 따르게 한다.
     - `std::uniform_int_distribution`, `std::geometric_distribution`, `std::exponential_distribution`, `std::normal_distribution` 등
   - 기타 제공 함수들
-    - `std::seed_seq`: 특정한 정수형 데이터의 sequence를 소비하여 이용하여 unsigned seed sequence를 생성한다.
+    - `std::seed_seq`: 특정한 정수형 데이터의 sequence를 소비하여 unsigned seed sequence를 생성한다.
 
 ```cpp
   // Seed with a real random value, if available
@@ -757,8 +757,8 @@ int main() {
 
 ## Beyond C++17
 C++17 표준에는 포함되지 않았지만 중요하게 논의되었으며, 다음 표준에 포함될 것이 유력한 기능들은 다음과 같다.
-- Concepts
-- Modules
-- Coroutines
+- Concepts: template에 제약사항(constraints)이나 공리(axioms)를 추가할 수 있게 한다.
+- Modules: `#include` 대신 `import` 키워드를 이용하여 효율적으로 코드 단위를 관리할 수 있게 한다.
+- Coroutines: 비선점형(non-preemptive) 멀티태스킹을 지원하는 동시성 관련 기능들이다.
 
 
