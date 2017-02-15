@@ -179,7 +179,7 @@ std::move(instance); //xvalue, 아래 설명
 **rvalue reference는 type이고, lvalue, xvalue, rvalue..등은 expression임을 유의한다.**
 
 ### Move Constructor
-복사 생성자(Copy constructor) 대신, 임시 값인 rvalue를 이용하여 객체 생성을 빠르게 할 수 있다. move constructor는 인자가 rvalue일 때 (prvalue이거나, xvalue일 때) 호출된다.
+복사 생성자(Copy constructor) 대신, 임시 값인 rvalue를 이용한다. move constructor는 인자가 rvalue일 때 (prvalue이거나, xvalue일 때) 호출된다. 명시적으로 원본 객체의 상태를 보장하지 않음으로써 자원할당을 줄여 성능 향상을 가져올 수 있다.
 
 ```cpp
 struct Obj
@@ -187,7 +187,7 @@ struct Obj
   std::string s;
   Obj() : s{"text"} {}
   Obj(const Obj& o) : s{o.s} { std::cout << "copy ctor!"<<std::endl; }
-  Obj(Obj&& o) noexcept : s{std::move(o.s)} { std::cout << "move ctor!"<<std::endl; }
+  Obj(Obj&& o) noexcept : s{std::move(o.s)} { std::cout << "move ctor!"<<std::endl; } //예외를 내보내지 않는다.
 };
 
 Obj f(Obj o) { return o; } //produce a rvalue
@@ -198,6 +198,10 @@ int main() {
   Obj b{f(Obj())}; //move ctor!
 }
 ```
+
+Move constructor를 이용한 성능향상의 가장 큰 예로 `std::vector::resize`를 들 수 있다. C++11 이전까지는 해당 함수가 호출될 경우 컨테이너 내부에 있는 모든 객체를 새로운 메모리 공간에 복사(copy)하는 과정이 이루어졌지만, 이제 객체를 새로운 공간으로 '이동'함으로써 복사로 인한 overhead를 줄어들게 되었다.
+
+그러나, Move constructor는 특성상 exception safety를 보장할 수 없다는 문제가 있다. 즉, 예외가 발생하고 객체 생성이 실패하였을 때 원본 객체의 상태가 온전하다고 장담할 수 없게되며, 이는 위에서 설명한 `std::vector::resize`와 같이 내부적으로 move constructor를 이용하는 연산에서 문제를 일으킬 수 있다. 따라서 기본 move constructor는 예외를 발생시키지 않는 것(`noexcept` 키워드)을 동작 방침으로 하며, 사용자가 지정한 move constructor역시 특수한 경우를 제외하고는 `noexcept`를 명시하는 것이 권장된다. (실제로 STL 컨테이너들이 객체의 이동을 위해 사용하는 함수는 `std::move_if_noexcept`이다. 만약 move constructor가 `noexcept`로 선언되지 않았다면 copy constructor가 호출된다.) 
 
 ### `std::move`
 `std::move`는 기본적으로 parameter로 주어진 lvalue expression을 rvalue reference로 `static_cast` 하는 역할을 한다. (xvalue expression) 이를 이용해 명시적으로 move constructor를 호출할 수 있다. 
